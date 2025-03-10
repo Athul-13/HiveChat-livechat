@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer utilities {
+    /* Thin scrollbar for Firefox */
+    .scrollbar-thin {
+      scrollbar-width: thin; /* Firefox */
+      scrollbar-color: #888 #f1f1f1; /* Thumb and track color */
+    }
+  
+    /* Thin scrollbar for WebKit browsers (Chrome, Edge, Safari) */
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 3px; /* Slightly thicker for better aesthetics */
+    }
+  
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 6px;
+    }
+  
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #6b7280, #374151); /* Gradient effect */
+      border-radius: 10px;
+      transition: background 0.3s ease-in-out;
+    }
+  
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #4b5563, #1f2937); /* Darker gradient on hover */
+    }
+  
+    /* Hide scrollbar buttons (top and bottom arrows) */
+    .scrollbar-thin::-webkit-scrollbar-button:single-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+  }
+  
