@@ -4,8 +4,9 @@ import { io } from "socket.io-client";
 import { userService } from "../utils/api";
 import Profile from '../assets/proffile.jpg';
 import ChatInfoModal from './ChatInfoModal';
+import { useSelector } from "react-redux";
 
-export default function ChatArea({ chat, currentUser, onBack, onChatCreated }) {
+export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onlineUsers }) {
   const [message, setMessage] = useState("");
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
@@ -123,21 +124,6 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated }) {
           initialMessage: message
         });
         
-        // The rest will be handled by the chatCreated event listener
-        
-        // Optimistically add message to UI
-        // setMessages([{
-        //   _id: Date.now().toString(), // Temporary ID
-        //   content: message,
-        //   sender: {
-        //     _id: currentUser.id,
-        //     firstName: currentUser.firstName,
-        //     lastName: currentUser.lastName,
-        //     profilePicture: currentUser.profilePicture
-        //   },
-        //   createdAt: new Date().toISOString()
-        // }]);
-        
         setMessage("");
         return;
       }
@@ -153,19 +139,6 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated }) {
       
       // Send message via socket
       socket.emit("sendMessage", messageData);
-      
-      // Optimistically add message to UI
-      // setMessages(prevMessages => [...prevMessages, {
-      //   _id: Date.now().toString(), // Temporary ID
-      //   content: message,
-      //   sender: {
-      //     _id: currentUser.id,
-      //     firstName: currentUser.firstName,
-      //     lastName: currentUser.lastName,
-      //     profilePicture: currentUser.profilePicture
-      //   },
-      //   createdAt: new Date().toISOString()
-      // }]);
       
       setMessage("");
     } catch (error) {
@@ -190,10 +163,14 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated }) {
         participant => participant._id !== currentUser.id
       );
       
+      // Check if the other user is online (using onlineUsers prop)
+      const isOnline = otherUser && onlineUsers.includes(otherUser._id);
+      
       return {
         name: otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat",
         profilePicture: otherUser?.profilePicture || Profile,
-        status: otherUser?.status || "offline"
+        status: isOnline ? "online" : "offline",
+        _id: otherUser?._id
       };
     }
   };
@@ -213,7 +190,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated }) {
         <div className="flex items-center">
           {(localChat.participants?.length > 2) ? (
             <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mr-3">
-              <Users className="w-6 h-6 text-white" />
+              <Users className="w-6 h-6 text-white" onClick={() => setShowChatInfo(true)} />
             </div>
           ) : (
             <div className="relative" onClick={() => setShowChatInfo(true)}>
@@ -323,7 +300,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated }) {
           </button>
         </form>
       </div>
-      {showChatInfo && < ChatInfoModal chat={chat} onClose={() => setShowChatInfo(false)} />}
+      {showChatInfo && <ChatInfoModal chat={chat} onClose={() => setShowChatInfo(false)} />}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { logout } from "../redux/authSlice";
 import { useNavigate } from "react-router-dom";
 import { authService, notificationService, userService } from "../utils/api";
 import logo from "../assets/logo.png"; 
-import socket from "../utils/socket"; // Import your socket instance
+import socket from "../utils/socket"; 
 
 import Loader from "../components/Loader";
 
@@ -26,6 +26,7 @@ export default function Homepage() {
   const [friendRequests, setFriendRequests] = useState([]);
   const [chats, setChats] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -96,6 +97,61 @@ export default function Homepage() {
     return () => clearTimeout(timeout);
   }, [currentUser.id]);
 
+  // getting online users
+  useEffect(() => {
+    if (!currentUser.id) return;
+  
+    // Request the initial online users list
+    socket.emit("getOnlineUsers");
+  
+    // Function to update online users
+    const handleOnlineUsers = (users) => {
+      // Only update state if users is a valid array
+      if (users && Array.isArray(users)) {
+        setOnlineUsers(users);
+      } else {
+        console.warn("Received invalid online users data:", users);
+      }
+    };
+  
+    // Listen for real-time updates when a new user logs in
+    const handleNewUserConnected = (newUserId) => {
+      if (!newUserId) return;
+      
+      setOnlineUsers((prevUsers) => {
+        // Guard against undefined prevUsers
+        const currentUsers = Array.isArray(prevUsers) ? prevUsers : [];
+        if (!currentUsers.includes(newUserId)) {
+          return [...currentUsers, newUserId];
+        }
+        return currentUsers;
+      });
+    };
+  
+    // Listen for user disconnects
+    const handleUserDisconnected = (userId) => {
+      if (!userId) return;
+      
+      console.log("User disconnected:", userId);
+      setOnlineUsers((prevUsers) => {
+        // Guard against undefined prevUsers
+        const currentUsers = Array.isArray(prevUsers) ? prevUsers : [];
+        return currentUsers.filter((id) => id !== userId);
+      });
+    };
+  
+    // Listen for events
+    socket.on("onlineUsers", handleOnlineUsers);
+    socket.on("userConnected", handleNewUserConnected);
+    socket.on("userDisconnected", handleUserDisconnected);
+  
+    return () => {
+      socket.off("onlineUsers", handleOnlineUsers);
+      socket.off("userConnected", handleNewUserConnected);
+      socket.off("userDisconnected", handleUserDisconnected);
+    };
+  }, [currentUser.id]);
+  
   // Set up socket listeners for real-time updates
   useEffect(() => {
     if (!currentUser.id) return;
@@ -103,6 +159,45 @@ export default function Homepage() {
     // Connect to socket
     socket.connect(); // Make sure the socket is connected
     socket.emit('userConnected', currentUser.id);
+
+      // Function to handle new messages
+  const handleNewMessage = (message) => {    
+    // Update chat list to show new message
+    setChats(prevChats => {
+      return prevChats.map(chat => {
+        if (chat._id === message.chat) {
+          const formattedMessage = {
+            ...message,
+            // Add any missing fields that your UI expects
+          };
+          // If this is not the active chat, increment unread count
+          const newUnreadCount = 
+            activeChat && activeChat._id === chat._id 
+              ? 0 
+              : (chat.unread || 0) + 1;
+          
+          return {
+            ...chat,
+            lastMessage: formattedMessage,
+            unread: newUnreadCount
+          };
+        }
+        return chat;
+      });
+    });
+    
+    // If this message is for the active chat, mark it as read
+    if (activeChat && activeChat._id === message.chat) {
+      // Optionally emit an event to mark as read on the server
+      socket.emit('markMessageRead', {
+        chatId: message.chat,
+        userId: currentUser.id
+      });
+    }
+  };
+
+  // Add the event listener
+  socket.on("newMessage", handleNewMessage);
   
     // Listen for new notifications
     const handleNewNotification = (notification) => {
@@ -122,6 +217,7 @@ export default function Homepage() {
   
     // Clean up event listeners when component unmounts
     return () => {
+      socket.off("newMessage", handleNewMessage);
       socket.off('newNotification', handleNewNotification);
       socket.off('unreadNotificationsCount', handleUnreadCount);
       // Only disconnect if you're not using the socket elsewhere
@@ -130,6 +226,8 @@ export default function Homepage() {
   }, [currentUser.id]);
 
   const handleLogout = async () => {
+    socket.disconnect();
+
     await authService.logout();
     await dispatch(logout());
     navigate("/");
@@ -141,6 +239,33 @@ export default function Homepage() {
   };
 
   const handleChatSelect = (chat) => {
+    // If there are unread messages, mark them as read
+    // if (chat.unread > 0) {
+    //   // Update UI immediately
+    //   setChats(prevChats => {
+    //     return prevChats.map(c => {
+    //       if (c._id === chat._id) {
+    //         return { ...c, unread: 0 };
+    //       }
+    //       return c;
+    //     });
+    //   });
+      
+    //   // Tell server that messages have been read
+    //   socket.emit('markChatAsRead', {
+    //     chatId: chat._id,
+    //     userId: currentUser.id
+    //   });
+    // }
+    
+    // // Join the chat room when selecting a chat
+    // socket.emit('joinRoom', chat._id);
+    
+    // // If there was a previously active chat, leave that room
+    // if (activeChat && activeChat._id !== chat._id) {
+    //   socket.emit('leaveRoom', activeChat._id);
+    // }
+    
     setActiveChat(chat);
   };
 
@@ -151,7 +276,7 @@ export default function Homepage() {
   const renderSideContent = () => {
     switch (activeSection) {
       case "chats":
-        return <ChatList chats={chats} onChatSelect={handleChatSelect} activeChat={activeChat} onNewChat={handleSectionChange} contacts={contacts} />;
+        return <ChatList chats={chats} onChatSelect={handleChatSelect} activeChat={activeChat} onNewChat={handleSectionChange} contacts={contacts} onlineUsers={onlineUsers} />;
       case "notifications":
         return <NotificationsArea notifications={notifications} setNotifications={setNotifications} setUnreadCount={setUnreadNotificationCount} />;
       case "friendRequests":
@@ -159,7 +284,7 @@ export default function Homepage() {
       case "search":
         return <SearchArea onChatSelect={handleChatSelect} />;
       case "friends":
-        return <FriendsArea friends={contacts} onChatSelect={handleChatSelect} />;
+        return <FriendsArea friends={contacts} onChatSelect={handleChatSelect} onlineUsers={onlineUsers} />;
       case "settings":
         return <SettingsArea currentUser={currentUser} onLogout={handleLogout} />;
       case "profile":
@@ -220,7 +345,7 @@ export default function Homepage() {
           {/* Chat Area */}
           <div className="flex-[3] overflow-hidden flex flex-col">
             {activeChat ? (
-              <ChatArea chat={activeChat} currentUser={currentUser} onBack={() => setActiveChat(null)} />
+              <ChatArea chat={activeChat} currentUser={currentUser} onBack={() => setActiveChat(null)} onlineUsers={onlineUsers} />
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                 <div className="relative w-52 h-52 mb-6">

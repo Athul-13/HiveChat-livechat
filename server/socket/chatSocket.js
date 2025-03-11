@@ -26,7 +26,12 @@ exports.handleSocket = function(io, socket) {
     // Update user status to online
     try {
         // Send the current list of online users to the newly connected user
-        socket.emit('onlineUsers', Array.from(onlineUsers));
+        // socket.emit('onlineUsers', Array.from(onlineUsers));
+
+        // Send the current list of online users to ALL clients (not just this socket)
+        io.emit('onlineUsers', Array.from(onlineUsers));
+        // Emit the userConnected event to all clients
+        io.emit('userConnected', userId);
         
         // Import notification controller here to avoid circular dependency
         const notificationController = require('../controllers/notificationController');
@@ -225,6 +230,11 @@ exports.handleSocket = function(io, socket) {
         
         // Remove from online users
         onlineUsers.delete(userId);
+
+        // Broadcast to ALL clients that this user disconnected
+        io.emit('userDisconnected', userId);
+        // Send updated online users list to ALL clients
+        io.emit('onlineUsers', Array.from(onlineUsers));
 
         break;
       }

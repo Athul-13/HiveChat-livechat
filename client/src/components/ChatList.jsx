@@ -1,10 +1,13 @@
-import { Users, Search, PlusCircle, Contact } from "lucide-react";
+import { Users, Search, PlusCircle } from "lucide-react";
 import Profile from '../assets/proffile.jpg'
 import { useState } from "react";
 import CreateGroupModal from "./CreateGroupModal";
+import { useSelector } from "react-redux";
 
-export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, contacts }) {
+export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, contacts, onlineUsers }) {
   const [showCreateGroup, setShowcreateGroup] = useState(false);
+  
+  const currentUser = useSelector((state) => state.auth.user);
 
   return (
     <div className="h-full flex flex-col">
@@ -38,7 +41,11 @@ export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, c
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Conversations</h3>
         </div>
         <div>
-          {chats.map((chat) => (
+          {chats.map((chat) => {
+            const isOnline = chat.participants && chat.participants.some(participant => 
+              participant._id !== currentUser.id && onlineUsers.includes(participant._id)
+            );
+            return (
             <button
               key={chat._id}
               className={`w-full text-left px-4 py-3 hover:bg-indigo-50 flex items-center transition-colors ${
@@ -67,7 +74,7 @@ export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, c
                     />
                   </div>
                 )}
-                {chat.type !== "group" && chat.status === "online" && (
+                {chat.type !== "group" &&  isOnline && (
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
                 )}
                 {chat.unread > 0 && chat.type === "group" && (
@@ -109,7 +116,7 @@ export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, c
                 </span>
               )}
             </button>
-          ))}
+          )})}
         </div>
       </div>
       {showCreateGroup && < CreateGroupModal contacts={contacts} onClose={() => setShowcreateGroup(false)} onChatSelect={onChatSelect} />}
