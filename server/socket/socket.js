@@ -7,7 +7,7 @@ let io;
 exports.initSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: process.env.FRONTEND_URL || "http://localhost:5173",
       methods: ["GET", "POST"],
       credentials: true
     }

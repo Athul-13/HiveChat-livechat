@@ -1,7 +1,7 @@
 import io from 'socket.io-client';
 
 // Connect to the server (adjust the URL based on your environment)
-const SOCKET_URL = 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL;
 
 const socket = io(SOCKET_URL, {
   withCredentials: true,
