@@ -16,7 +16,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
 
   // Initialize socket connection
   useEffect(() => {
-    const newSocket = io("http://localhost:3000"); // Use your server URL
+    const newSocket = io(import.meta.env.VITE_BACKEND_URL); // Use your server URL
     setSocket(newSocket);
 
     // Clean up on component unmount
