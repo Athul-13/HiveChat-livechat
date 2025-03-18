@@ -1,5 +1,6 @@
 const socketIO = require('socket.io');
 const chatSocketHandler = require('./chatSocket');
+const callSocketHandler = require('./callSocket');
 
 let io;
 
@@ -18,6 +19,9 @@ exports.initSocket = (server) => {
     
     // Use the handler function from chatSocket.js
     chatSocketHandler.handleSocket(io, socket);
+
+    // Initialize call socket handlers
+    callSocketHandler.handleCallSocket(io, socket);
   });
 
   return io;

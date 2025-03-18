@@ -13,7 +13,14 @@ const EVENTS = {
     NEW_NOTIFICATION: "newNotification",
     JOIN_ROOM: "joinRoom",
     LEAVE_ROOM: "leaveRoom",
-    USER_CONNECTED: "userConnected"
+    USER_CONNECTED: "userConnected",
+    // Call-related events
+    INCOMING_CALL: "incomingCall",
+    ACCEPT_CALL: "acceptCall",
+    END_CALL: "endCall",
+    OFFER: "offer",
+    ANSWER: "answer",
+    ICE_CANDIDATE: "iceCandidate"
   };
 
 module.exports = { SOCKET_OPTIONS, EVENTS };

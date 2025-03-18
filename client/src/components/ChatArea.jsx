@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, ArrowLeft, Users, Image, Smile } from "lucide-react";
+import { Send, Paperclip, ArrowLeft, Users, Image, Smile, Phone, Video } from "lucide-react";
 import { io } from "socket.io-client";
 import { userService } from "../utils/api";
 import Profile from '../assets/proffile.jpg';
 import ChatInfoModal from './ChatInfoModal';
 import { useSelector } from "react-redux";
 
-export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onlineUsers }) {
+export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onlineUsers, initiateCall }) {
   const [message, setMessage] = useState("");
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
@@ -212,6 +212,24 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
             )}
           </div>
         </div>
+        {(!localChat.participants || localChat.participants?.length <= 2) && chatInfo.status === "online" && (
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => initiateCall(chatInfo._id, localChat._id, 'voice')}
+            className="hover:bg-white/20 p-2 rounded-full transition-colors"
+            title="Voice Call"
+          >
+            <Phone size={20} />
+          </button>
+          <button 
+            onClick={() => initiateCall(chatInfo._id, localChat._id, 'video')}
+            className="hover:bg-white/20 p-2 rounded-full transition-colors"
+            title="Video Call"
+          >
+            <Video size={20} />
+          </button>
+        </div>
+      )}
       </div>
 
       {/* Chat Messages */}

@@ -219,13 +219,27 @@ export const userService = {
     },
     createGroup: async (groupName, participants) => {
         try {
-            console.log('data',participants);
             const response = await api.post('/user/create-group',{groupName, participants})
             return response.data;
         } catch (err) {
             console.error('failed to create group', err);
             throw err;
         }
+    },
+    initiateCall: async (initiatorId, recipientId, chatId, callType) => {
+        try {
+            const response = await api.post('/call/initiate', {
+              chatId,
+              initiatorId,
+              participantIds: [recipientId],
+              callType,
+            });
+            console.log('data',response)
+            return response.data; // Return the API response
+          } catch (error) {
+            console.error('Error initiating call:', error.response?.data || error.message);
+            throw error; // Rethrow for handling in the caller function
+          }
     }
 }
 

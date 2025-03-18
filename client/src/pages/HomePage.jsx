@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../redux/authSlice";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ import SettingsArea from "../components/SettingsArea";
 import ProfileArea from "../components/ProfileArea";
 import ChatArea from "../components/ChatArea";
 import Sidebar from "../components/Sidebar";
+import CallManager from "../components/CallManager";
 
 export default function Homepage() {
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,7 @@ export default function Homepage() {
   const [notifications, setNotifications] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const callManagerRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -279,6 +281,12 @@ export default function Homepage() {
     // Update profile logic
   };
 
+  const initiateCall = (recipientId, chatId, callType) => {
+    if (callManagerRef.current) {
+      callManagerRef.current.initiateCall(recipientId, chatId, callType);
+    }
+  };
+
   const renderSideContent = () => {
     switch (activeSection) {
       case "chats":
@@ -318,6 +326,7 @@ export default function Homepage() {
   };
 
   return (
+    <>
     <div className="flex h-screen bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden scrollbar-thin">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden -z-10">
@@ -351,7 +360,7 @@ export default function Homepage() {
           {/* Chat Area */}
           <div className="flex-[3] overflow-hidden flex flex-col">
             {activeChat ? (
-              <ChatArea chat={activeChat} currentUser={currentUser} onBack={() => setActiveChat(null)} onlineUsers={onlineUsers} />
+              <ChatArea chat={activeChat} currentUser={currentUser} onBack={() => setActiveChat(null)} onlineUsers={onlineUsers} initiateCall={initiateCall}/>
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                 <div className="relative w-52 h-52 mb-6">
@@ -381,5 +390,10 @@ export default function Homepage() {
         </div>
       </div>
     </div>
+    <CallManager 
+    currentUser={currentUser} 
+    ref={callManagerRef}
+  />
+  </>
   );
 }
