@@ -233,7 +233,6 @@ export const friendService = {
     acceptRequest: async(senderId) => {
         try {
             const response = await api.post('/user/accept', {senderId} );
-            console.log('res',response);
             return response.data;
         } catch (err) {
             console.error('failed to accept', err);

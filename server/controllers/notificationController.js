@@ -25,15 +25,16 @@ class NotificationController {
       const { userSocketMap } = require('../socket/chatSocket');
       
       // Get the recipient's socket ID
-      const recipientSocketId = userSocketMap.get(recipient.toString());
-      
-      if (recipientSocketId) {
-        // Populate sender info before sending
-        const populatedNotification = await Notification.findById(savedNotification._id)
-          .populate('sender', 'firstName lastName profilePicture')
-          .populate('recipient', 'firstName lastName');
+      const senderSocketId = userSocketMap.get(sender.toString());
         
-        io.to(recipientSocketId).emit('newNotification', populatedNotification);
+      if (senderSocketId) {
+          // Populate sender and recipient info before sending the notification
+          const populatedNotification = await Notification.findById(savedNotification._id)
+              .populate('sender', 'firstName lastName profilePicture')
+              .populate('recipient', 'firstName lastName');
+          
+          // Send the notification to the sender (not the recipient)
+          io.to(senderSocketId).emit('newNotification', populatedNotification);
       }
       
       return savedNotification;

@@ -197,7 +197,10 @@ exports.acceptRequest = async (req, res) => {
         console.log('reci',recipientId);
 
         // Find the friend request and verify recipient
-        const friendRequest = await FriendRequest.findOne({sender: senderId});
+        const friendRequest = await FriendRequest.findOne({
+            sender: senderId,
+            recipient: recipientId
+        });
         if (!friendRequest) {
             return res.status(404).json({ error: 'Friend request not found' });
         }

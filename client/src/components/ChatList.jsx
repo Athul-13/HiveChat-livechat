@@ -77,11 +77,11 @@ export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, c
                 {chat.type !== "group" &&  isOnline && (
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
                 )}
-                {chat.unread > 0 && chat.type === "group" && (
+                {/* {chat.unread > 0 && chat.type === "group" && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-pink-500 rounded-full border-2 border-white flex items-center justify-center">
                     <span className="text-xs text-white font-bold">{chat.unread}</span>
                   </span>
-                )}
+                )} */}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline">
@@ -110,11 +110,11 @@ export default function ChatList({ chats, onChatSelect, activeChat, onNewChat, c
                   </p>
                 )}
                </div>
-              {chat.unread > 0 && chat.type !== "group" && (
+              {/* {chat.unread > 0 && chat.type !== "group" && (
                 <span className="ml-2 w-5 h-5 bg-pink-500 rounded-full flex items-center justify-center">
                   <span className="text-xs text-white font-bold">{chat.unread}</span>
                 </span>
-              )}
+              )} */}
             </button>
           )})}
         </div>

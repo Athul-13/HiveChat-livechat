@@ -63,6 +63,11 @@ exports.login = async(req, res) => {
 
         const user = await User.findOne({email});
 
+        // If user is not found, return an error response
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid email or password' });
+        }
+
         if (user.status === 'inactive') {
             return res.status(403).json({
                 message: 'User has been blocked from logging in',

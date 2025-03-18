@@ -219,6 +219,26 @@ exports.handleSocket = function(io, socket) {
       socket.emit('error', { message: 'Failed to send message' });
     }
   });
+
+  // handle accepted friend requests
+  socket.on('friendRequestAccepted', async (data) => {
+    try {
+      const { senderId, recipientData } = data;
+      
+      // Get the socket for the sender
+      const senderSocketId = userSocketMap.get(senderId);
+      
+      // Emit event to sender if they're online
+      if (senderSocketId) {
+        io.to(senderSocketId).emit('friendRequestAccepted', {
+          newFriend: recipientData
+        });
+        console.log(`Emitted friendRequestAccepted to user ${senderId}`);
+      }
+    } catch (error) {
+      console.error('Error handling friend request acceptance:', error);
+    }
+  });
   
   // Handle disconnection
   socket.on('disconnect', () => {

@@ -161,7 +161,7 @@ export default function Homepage() {
     socket.emit('userConnected', currentUser.id);
 
       // Function to handle new messages
-  const handleNewMessage = (message) => {    
+  const handleNewMessage = (message) => {  
     // Update chat list to show new message
     setChats(prevChats => {
       return prevChats.map(chat => {
@@ -188,6 +188,12 @@ export default function Homepage() {
     
     // If this message is for the active chat, mark it as read
     if (activeChat && activeChat._id === message.chat) {
+      setActiveChat(prevActiveChat => {
+        return {
+          ...prevActiveChat,
+          lastMessage: message
+        };
+      });
       // Optionally emit an event to mark as read on the server
       socket.emit('markMessageRead', {
         chatId: message.chat,
@@ -259,12 +265,12 @@ export default function Homepage() {
     // }
     
     // // Join the chat room when selecting a chat
-    // socket.emit('joinRoom', chat._id);
+    socket.emit('joinRoom', chat._id);
     
-    // // If there was a previously active chat, leave that room
-    // if (activeChat && activeChat._id !== chat._id) {
-    //   socket.emit('leaveRoom', activeChat._id);
-    // }
+    // If there was a previously active chat, leave that room
+    if (activeChat && activeChat._id !== chat._id) {
+      socket.emit('leaveRoom', activeChat._id);
+    }
     
     setActiveChat(chat);
   };
