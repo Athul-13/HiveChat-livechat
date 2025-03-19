@@ -26,7 +26,7 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
   const iceServers = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun1.google.com:19302" },
       { urls: "stun:ss-turn2.xirsys.com" }, // Xirsys STUN server
       {
         urls: [
@@ -67,38 +67,63 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
         if (peerConnection) {
           peerConnection.close();
           setPeerConnection(null);
-          // Remove the delay since it might be causing issues
         }
   
         // Request media devices first
         const constraints = {
-          audio: true,
-          video: callType === 'video',
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video: callType === 'video' ? {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            frameRate: { ideal: 30 }
+          } : false
         };
   
         console.log('Requesting media devices...');
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         console.log('Media stream obtained:', stream.getTracks().map(t => t.kind));
+
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          console.error('No audio tracks in local stream!');
+        }
         
         // Create new connection
         console.log('Creating new RTCPeerConnection');
         const pc = new RTCPeerConnection(iceServers);
+        console.log('PC initial states - signaling:', pc.signalingState, 
+          'ice:', pc.iceConnectionState, 
+          'connection:', pc.connectionState);
         
         // Add tracks to peer connection
+        console.log(`Adding ${stream.getTracks().length} tracks to peer connection`);
         stream.getTracks().forEach(track => {
-          console.log('Adding track:', track.kind);
+          console.log(`Adding ${track.kind} track to peer connection (enabled: ${track.enabled})`);
           pc.addTrack(track, stream);
         });
   
         // Set up event handlers
         pc.ontrack = (event) => {
-          console.log('Remote track received');
-          setRemoteStream(event.streams[0]);
+          console.log('ontrack event fired');
+          console.log('Received track:', event.track);
+          console.log('Streams:', event.streams);
+          if (event.streams && event.streams[0]) {
+            setRemoteStream(event.streams[0]);
+            console.log('Remote stream set with tracks:', event.streams[0].getTracks());
+          } else {
+            console.error('No streams in ontrack event');
+          }
         };
   
         pc.oniceconnectionstatechange = () => {
           console.log('ICE Connection State:', pc.iceConnectionState);
-          if (pc.iceConnectionState === 'failed') {
+          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+            console.log('ICE connected - media should start flowing');
+          } else if (pc.iceConnectionState === 'failed') {
             console.error('ICE connection failed');
             // Handle failure without calling endCall
             if (pc.signalingState !== 'closed') {
@@ -115,6 +140,8 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
           console.log('Connection state changed:', pc.connectionState);
           if (pc.connectionState === 'connected') {
             console.log('Peer connection established successfully');
+            console.log('Tracks in local stream:', stream.getTracks().map(t => `${t.kind} (enabled: ${t.enabled})`).join(', '));
+            console.log('Tracks in remote stream:', remoteStream ? remoteStream.getTracks().map(t => `${t.kind} (enabled: ${t.enabled})`).join(', ') : 'No remote stream yet');
           } else if (pc.connectionState === 'failed') {
             console.error('Connection failed');
             endCall();
@@ -124,8 +151,6 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
         pc.onsignalingstatechange = () => {
           console.log('Signaling state changed:', pc.signalingState);
         };
-        
-        console.log('Peer connection setup complete. State:', pc.signalingState);
         return pc;
       } catch (error) {
         console.error('Error in setupPeerConnection:', error);
@@ -136,7 +161,7 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
   );
 
   const endCall = useCallback(() => {
-    if (!activeCall) return;
+    if (!activeCall && !incomingCall) return;
     console.log('Ending call. Active call:', activeCall?.callId);
     console.trace('Call stack for endCall');
 
@@ -144,28 +169,37 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
       clearInterval(timerInterval);
       setTimerInterval(null);
     }
+    
+    // First, send end call signal if we have an active call
     if (activeCall) {
       socket.emit(EVENTS.END_CALL, { callId: activeCall.callId });
       socket.emit(EVENTS.LEAVE_ROOM, activeCall.chatId);
     }
+    
+    // Clean up media streams
     if (localStream) {
       localStream.getTracks().forEach((track) => {
         console.log('Stopping track:', track.kind);
         track.stop();
       });
     }
+    
+    // Close peer connection
     if (peerConnection) {
       console.log('Closing peer connection');
       peerConnection.close();
     }
+    
+    // Reset all states
     setActiveCall(null);
+    setIncomingCall(null); // Also clear any incoming call data
     setLocalStream(null);
     setRemoteStream(null);
     setPeerConnection(null);
     setCallTimer(0);
     setIsMuted(false);
     setIsVideoOff(false);
-  }, [activeCall, localStream, peerConnection, timerInterval]);
+  }, [activeCall, incomingCall, localStream, peerConnection, timerInterval]);
 
   const handleOffer = useCallback(
     async (data) => {
@@ -175,87 +209,58 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
           // Don't set up new connection if we're already in a call
           if (activeCall) {
             console.log('Already in a call, rejecting offer');
+            socket.emit('rejectCall', {
+              callId: data.callId,
+              userId: currentUser.id,
+            });
             return;
           }
   
-          // Create new call object
-          const call = {
+          // Set the incoming call data - DO NOT set activeCall yet
+          setIncomingCall({
             callId: data.callId,
             chatId: data.chatId,
             initiatorId: data.from,
             callType: data.callType,
-            isInitiator: false,
-          };
-          setActiveCall(call);
-  
-          console.log('Setting up peer connection for incoming call...');
-          const pc = await setupPeerConnection(data.callType);
-          
-          // Set up ICE candidate handling
-          pc.onicecandidate = (event) => {
-            if (event.candidate) {
-              console.log('New ICE candidate (answer):', event.candidate.candidate);
-              socket.emit(EVENTS.ICE_CANDIDATE, {
-                callId: data.callId,
-                from: currentUser.id,
-                to: data.from,
-                candidate: event.candidate,
-              });
-            }
-          };
-  
-          console.log('Setting remote description...');
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-          
-          console.log('Creating answer...');
-          const answer = await pc.createAnswer();
-          
-          console.log('Setting local description (answer)...');
-          await pc.setLocalDescription(answer);
-          
-          console.log('Sending answer...');
-          socket.emit(EVENTS.ANSWER, {
-            callId: data.callId,
-            from: currentUser.id,
-            to: data.from,
-            sdp: pc.localDescription,
+            sdp: data.sdp  // IMPORTANT: Store the offer SDP
           });
-          
-          console.log('Answer sent');
         } catch (error) {
           console.error('Error handling offer:', error);
           endCall();
         }
       }
     },
-    [currentUser.id, activeCall, setupPeerConnection, endCall]
+    [currentUser.id, activeCall, endCall]
   );
 
-  const handleAnswer = useCallback(
-    async (data) => {
-      if (data.to === currentUser.id && peerConnection) {
-        try {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        } catch (error) {
-          console.error('Error handling answer:', error);
-        }
+  const handleAnswer = useCallback(async (data) => {
+    if (data.to === currentUser.id && peerConnection) {
+      try {
+        console.log('Received answer SDP:', data.sdp);
+        const remoteDesc = new RTCSessionDescription(data.sdp);
+        console.log('Setting remote description with type:', remoteDesc.type);
+        await peerConnection.setRemoteDescription(remoteDesc);
+        console.log('Remote description set successfully');
+        startCallTimer();
+      } catch (error) {
+        console.error('Error setting remote description:', error);
       }
-    },
-    [currentUser.id, peerConnection]
-  );
+    } else {
+      console.log('Answer ignored - no peer connection or wrong user');
+    }
+  }, [currentUser.id, peerConnection, startCallTimer]);
 
-  const handleIceCandidate = useCallback(
-    async (data) => {
-      if (data.to === currentUser.id && peerConnection) {
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (error) {
-          console.error('Error adding ICE candidate:', error);
-        }
+  const handleIceCandidate = useCallback(async (data) => {
+    if (data.to === currentUser.id && peerConnection) {
+      try {
+        console.log('Received ICE candidate:', data.candidate);
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        console.log('ICE candidate added successfully');
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
       }
-    },
-    [currentUser.id, peerConnection]
-  );
+    }
+  }, [currentUser.id, peerConnection]);
 
   const initiateCall = async (recipientId, chatId, callType) => {
     let pc = null;
@@ -300,7 +305,8 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
         from: currentUser.id,
         to: recipientId,
         sdp: pc.localDescription,
-        callType
+        callType,
+        chatId
       };
       
       socket.emit(EVENTS.OFFER, offerData);
@@ -319,12 +325,35 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
         }
       };
 
-      // Wait for connection to establish
-    await new Promise((resolve) => {
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') resolve();
-      };
-    });
+      // Set up connection state monitoring with timeout
+      const connectionPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.log('Connection establishment timed out - continuing anyway');
+          resolve();
+        }, 5000); // 5 second timeout
+        
+        const existingHandler = pc.onconnectionstatechange;
+        pc.onconnectionstatechange = () => {
+          console.log('Connection state changed:', pc.connectionState);
+          if (pc.connectionState === 'connected') {
+            clearTimeout(timeout);
+            resolve();
+          } else if (pc.connectionState === 'failed') {
+            clearTimeout(timeout);
+            reject(new Error('Connection failed'));
+          }
+          // Call the existing handler if there was one
+          if (existingHandler) existingHandler.call(pc);
+        };
+      });
+
+      try {
+        await connectionPromise;
+        console.log('Connection established or timed out - continuing');
+      } catch (error) {
+        console.error('Connection error:', error);
+        // Don't call endCall here, just continue
+      }
   
       // Monitor connection state
       pc.oniceconnectionstatechange = () => {
@@ -344,8 +373,12 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
         console.log('Connection state changed:', pc.connectionState);
         if (pc.connectionState === 'connected') {
           console.log('Peer connection established successfully');
+          console.log('Checking remote tracks availability...');
+          const senders = pc.getSenders();
+          const receivers = pc.getReceivers();
+          console.log('Senders:', senders.length, 'Receivers:', receivers.length);
         } else if (pc.connectionState === 'failed') {
-          console.error('Connection failed - investigating...');
+          console.error('Connection failed');
           setTimeout(() => {
             if (pc.connectionState === 'failed') {
               endCall();
@@ -369,6 +402,17 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
   useEffect(() => {
     const handleIncomingCall = (callData) => {
       console.log('Incoming call:', callData);
+      
+      // If already in a call, reject new incoming calls
+      if (activeCall) {
+        console.log('Already in a call, rejecting incoming call');
+        socket.emit('rejectCall', {
+          callId: callData.callId,
+          userId: currentUser.id,
+        });
+        return;
+      }
+      
       setIncomingCall(callData);
     };
   
@@ -381,9 +425,8 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
   
     const handleCallEnded = (data) => {
       console.log('Call ended:', data);
-      if (activeCall && activeCall.callId === data.callId) {
-        endCall();
-      }
+      // Make sure we clean up everything if our call was ended remotely
+      endCall();
     };
   
     socket.on('incomingCall', handleIncomingCall);
@@ -393,7 +436,6 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
     socket.on(EVENTS.ANSWER, handleAnswer);
     socket.on(EVENTS.ICE_CANDIDATE, handleIceCandidate);
   
-    // Modified cleanup
     return () => {
       socket.off('incomingCall', handleIncomingCall);
       socket.off(EVENTS.ACCEPT_CALL, handleCallAccepted);
@@ -401,14 +443,8 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
       socket.off(EVENTS.OFFER, handleOffer);
       socket.off(EVENTS.ANSWER, handleAnswer);
       socket.off(EVENTS.ICE_CANDIDATE, handleIceCandidate);
-      
-      // Only end call if component is unmounting and there's an active call
-      // if (activeCall && !document.hidden) {
-      //   endCall();
-      // }
     };
-  }, []);
-  // handleOffer, handleAnswer, handleIceCandidate, activeCall, endCall, startCallTimer
+  }, [currentUser.id, handleOffer, handleAnswer, handleIceCandidate, activeCall, endCall, startCallTimer]);
 
   const acceptCall = async () => {
     try {
@@ -422,27 +458,65 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
         isInitiator: false,
       };
   
-      // Set active call before clearing incoming call
-      setActiveCall(call);
-      setIncomingCall(null);
-  
-      // Join room first
+      // First set up the peer connection
+      const pc = await setupPeerConnection(call.callType);
+      
+      // Join the room
       console.log('Joining room:', call.chatId);
       socket.emit(EVENTS.JOIN_ROOM, call.chatId);
   
-      // Setup peer connection
-      const pc = await setupPeerConnection(call.callType);
+      // IMPORTANT: Set remote description (offer) before creating answer
+      // The offer should be available in incomingCall.sdp
+      if (!incomingCall.sdp) {
+        console.error('Missing offer SDP in incoming call data');
+        endCall();
+        return;
+      }
       
+      console.log('Setting remote description (offer)...');
+      await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.sdp));
+      console.log('Remote description set successfully');
+  
       // Notify caller that call was accepted
       socket.emit(EVENTS.ACCEPT_CALL, {
         callId: call.callId,
         from: currentUser.id,
         to: call.initiatorId,
+        chatId: call.chatId,
       });
   
-      // Start timer
+      // Set up ICE candidate handling
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit(EVENTS.ICE_CANDIDATE, {
+            callId: call.callId,
+            from: currentUser.id,
+            to: call.initiatorId,
+            candidate: event.candidate,
+          });
+        }
+      };
+      
+      // Create and send answer (now valid since remote description is set)
+      console.log('Creating answer...');
+      const answer = await pc.createAnswer();
+      
+      console.log('Setting local description (answer)...');
+      await pc.setLocalDescription(answer);
+      
+      console.log('Sending answer...');
+      socket.emit(EVENTS.ANSWER, {
+        callId: call.callId,
+        from: currentUser.id,
+        to: call.initiatorId,
+        sdp: pc.localDescription,
+      });
+      
+      // Only after all setup is complete, update the active call state
+      setActiveCall(call);
+      setIncomingCall(null);
+      
       startCallTimer();
-  
     } catch (error) {
       console.error('Error accepting call:', error);
       endCall();
@@ -451,11 +525,27 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
 
   const rejectCall = () => {
     if (!incomingCall) return;
+    
     socket.emit('rejectCall', {
       callId: incomingCall.callId,
       userId: currentUser.id,
     });
+    
+    // Clean up any partially set up state
     setIncomingCall(null);
+    
+    // Make sure all media and connections are cleaned up
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+      setLocalStream(null);
+    }
+    
+    if (peerConnection) {
+      peerConnection.close();
+      setPeerConnection(null);
+    }
   };
 
   const toggleMute = () => {
@@ -478,9 +568,30 @@ const CallManager = forwardRef(({ currentUser }, ref) => {
     }
   };
 
+  // Add this function to debug remote stream status
+  const logStreamStatus = () => {
+    console.log('Remote stream status:', remoteStream ? 'Available' : 'Null');
+    if (remoteStream) {
+      console.log('Remote tracks:', remoteStream.getTracks().map(t => `${t.kind} (enabled: ${t.enabled})`).join(', '));
+    }
+    console.log('Local stream status:', localStream ? 'Available' : 'Null');
+    if (localStream) {
+      console.log('Local tracks:', localStream.getTracks().map(t => `${t.kind} (enabled: ${t.enabled})`).join(', '));
+    }
+  };
+
+  useEffect(() => {
+    // Log whenever remoteStream changes
+    console.log('Remote stream updated:', remoteStream ? 'Available' : 'Not available');
+    if (remoteStream) {
+      console.log('Remote stream tracks:', 
+        remoteStream.getTracks().map(t => `${t.kind} (enabled: ${t.enabled})`).join(', '));
+    }
+  }, [remoteStream]);
+
   return (
     <>
-      {incomingCall && (
+      {incomingCall && !activeCall && (
         <IncomingCallModal call={incomingCall} onAccept={acceptCall} onReject={rejectCall} />
       )}
       {activeCall && activeCall.callType === 'voice' && (

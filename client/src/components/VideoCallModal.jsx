@@ -15,6 +15,9 @@ const VideoCallModal = ({
 }) => {
   const remoteVideoRef = useRef(null);
   const localVideoRef = useRef(null);
+
+  console.log('local',localStream);
+  console.log('remote',remoteStream);
   
   // Set up video elements for streams
   useEffect(() => {

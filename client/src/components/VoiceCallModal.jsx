@@ -1,22 +1,28 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Mic, MicOff, Phone } from 'lucide-react';
 
 const VoiceCallModal = ({ call, duration, isMuted, onToggleMute, onEndCall, remoteStream }) => {
   // Get call recipient/initiator info
+  const audioRef = useRef(null);
+
   const otherUserName = call.recipientName || call.initiatorName || "User";
   const otherUserImage = call.recipientImage || call.initiatorImage || null;
-  
+
+  console.log('remoteStream',remoteStream);
   // Set up audio elements for streams
-  React.useEffect(() => {
-    const audioElement = document.getElementById('remoteAudio');
-    if (audioElement && remoteStream) {
-      audioElement.srcObject = remoteStream;
+  useEffect(() => {
+    console.log('VoiceCallModal: Trying to attach remote stream:', remoteStream);
+    if (remoteStream && audioRef.current) {
+      console.log('VoiceCallModal: Attaching remote stream to audio element');
+      audioRef.current.srcObject = remoteStream;
+      audioRef.current.play().catch(err => console.error('Error playing audio:', err));
     }
   }, [remoteStream]);
-  
+
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 to-purple-900 flex flex-col items-center justify-center z-50">
-      <audio id="remoteAudio" autoPlay></audio>
+      {/* Use the ref instead of id */}
+      <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }}></audio>
       
       <div className="text-center mb-12">
         <div className="w-32 h-32 mx-auto bg-white/10 backdrop-blur rounded-full flex items-center justify-center mb-6 relative">
