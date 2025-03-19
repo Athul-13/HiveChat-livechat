@@ -181,13 +181,16 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
     <div className="flex flex-col h-full max-h-[calc(100vh-3rem)]">
       {/* Chat Header */}
       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 flex items-center shadow-md">
+        {/* Back Button */}
         <button 
           onClick={onBack} 
           className="mr-4 hover:bg-white/20 p-2 rounded-full transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
-        <div className="flex items-center">
+
+        {/* Chat Info (This takes up all the space in between) */}
+        <div className="flex items-center flex-grow">
           {(localChat.participants?.length > 2) ? (
             <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mr-3">
               <Users className="w-6 h-6 text-white" onClick={() => setShowChatInfo(true)} />
@@ -212,25 +215,28 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
             )}
           </div>
         </div>
-        {(!localChat.participants || localChat.participants?.length <= 2) && chatInfo.status === "online" && (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => initiateCall(chatInfo._id, localChat._id, 'voice')}
-            className="hover:bg-white/20 p-2 rounded-full transition-colors"
-            title="Voice Call"
-          >
-            <Phone size={20} />
-          </button>
-          <button 
-            onClick={() => initiateCall(chatInfo._id, localChat._id, 'video')}
-            className="hover:bg-white/20 p-2 rounded-full transition-colors"
-            title="Video Call"
-          >
-            <Video size={20} />
-          </button>
-        </div>
-      )}
+
+        {/* Call Buttons (Only shown when user is online)&& chatInfo.status === "online" */}
+        {(!localChat.participants || localChat.participants?.length <= 2)  && (
+          <div className="flex space-x-2 gap-6 me-5">
+            <button 
+              onClick={() => initiateCall(chatInfo._id, localChat._id, 'voice')}
+              className="hover:bg-white/20 p-2 rounded-full transition-colors"
+              title="Voice Call"
+            >
+              <Phone size={20} />
+            </button>
+            <button 
+              onClick={() => initiateCall(chatInfo._id, localChat._id, 'video')}
+              className="hover:bg-white/20 p-2 rounded-full transition-colors"
+              title="Video Call"
+            >
+              <Video size={20} />
+            </button>
+          </div>
+        )}
       </div>
+
 
       {/* Chat Messages */}
       <div 

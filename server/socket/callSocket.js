@@ -14,9 +14,12 @@ exports.handleCallSocket = function(io, socket) {
   });
 
   socket.on(EVENTS.OFFER, (data) => {
+    console.log(`Received OFFER from ${data.from} to ${data.to}:`, data);
     const recipientSocketId = userSocketMap.get(data.to);
+    console.log(`Recipient ${data.to} socket ID: ${recipientSocketId}`);
     if (recipientSocketId) {
       io.to(recipientSocketId).emit(EVENTS.OFFER, data);
+      console.log(`Sent OFFER to ${recipientSocketId}`);
     }
   });
 

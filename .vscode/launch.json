@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "Launch Chrome against localhost",
+      "url": "http://localhost:5173", // Ensure this matches Vite's port
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMaps": true,
+      "trace": true,
+      "skipFiles": ["<node_internals>/**", "node_modules/**/*.js", "node_modules/**/*.mjs"]
+    }
+  ]
+}

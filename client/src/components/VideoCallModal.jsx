@@ -10,7 +10,8 @@ const VideoCallModal = ({
   onToggleVideo, 
   onEndCall, 
   remoteStream, 
-  localStream 
+  localStream,
+  currentUser
 }) => {
   const remoteVideoRef = useRef(null);
   const localVideoRef = useRef(null);

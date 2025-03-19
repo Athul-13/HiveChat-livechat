@@ -234,7 +234,6 @@ export const userService = {
               participantIds: [recipientId],
               callType,
             });
-            console.log('data',response)
             return response.data; // Return the API response
           } catch (error) {
             console.error('Error initiating call:', error.response?.data || error.message);
