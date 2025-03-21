@@ -8,21 +8,54 @@ const VoiceCallModal = ({ call, duration, isMuted, onToggleMute, onEndCall, remo
   const otherUserName = call.recipientName || call.initiatorName || "User";
   const otherUserImage = call.recipientImage || call.initiatorImage || null;
 
-  console.log('remoteStream',remoteStream);
   // Set up audio elements for streams
   useEffect(() => {
     console.log('VoiceCallModal: Trying to attach remote stream:', remoteStream);
+    
     if (remoteStream && audioRef.current) {
       console.log('VoiceCallModal: Attaching remote stream to audio element');
+      
+      // Clean up previous stream if exists
+      if (audioRef.current.srcObject) {
+        audioRef.current.pause();
+        audioRef.current.srcObject = null;
+      }
+      
       audioRef.current.srcObject = remoteStream;
-      audioRef.current.play().catch(err => console.error('Error playing audio:', err));
+      
+      // Use try-catch around play() and don't log to console directly
+      const playPromise = audioRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('Audio playback started successfully');
+          })
+          .catch(err => {
+            console.error('Error playing audio:', err);
+            // Handle the error gracefully - maybe try again after a short delay
+            setTimeout(() => {
+              audioRef.current?.play().catch(e => 
+                console.error('Retry error:', e)
+              );
+            }, 300);
+          });
+      }
     }
+    
+    // Cleanup function to properly handle component unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.srcObject = null;
+      }
+    };
   }, [remoteStream]);
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 to-purple-900 flex flex-col items-center justify-center z-50">
       {/* Use the ref instead of id */}
-      <audio ref={audioRef} autoPlay playsInline style={{ display: 'none' }}></audio>
+      <audio ref={audioRef} autoPlay={false} playsInline style={{ display: 'none' }}></audio>
       
       <div className="text-center mb-12">
         <div className="w-32 h-32 mx-auto bg-white/10 backdrop-blur rounded-full flex items-center justify-center mb-6 relative">

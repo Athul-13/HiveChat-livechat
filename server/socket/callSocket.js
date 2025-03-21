@@ -20,14 +20,20 @@ exports.handleCallSocket = function(io, socket) {
   socket.on(EVENTS.OFFER, async (data) => {
     console.log(`Received OFFER from ${data.from} to ${data.to} for call ${data.callId}`, {
       callType: data.callType,
-      chatId: data.chatId
+      chatId: data.chatId,
+      sdpType: data.sdp?.type || 'unknown',
+      sdpHasIce: data.sdp?.sdp?.includes('candidate') || false,
+      sdpHasAudio: data.sdp?.sdp?.includes('m=audio') || false,
+      sdpHasVideo: data.sdp?.sdp?.includes('m=video') || false
     });
     
     // Update call record if it exists
     try {
       const call = await Call.findById(data.callId);
       if (call) {
-        console.log(`Found call record ${data.callId}, status: ${call.status}`);
+        console.log(`Found call record ${data.callId}, status: ${call.status}, participants: initiator=${call.initiator}, recipient=${call.recipient}`);
+      } else {
+        console.warn(`Call record ${data.callId} not found in database`);
       }
     } catch (err) {
       console.error(`Error finding call ${data.callId}:`, err);
@@ -37,12 +43,14 @@ exports.handleCallSocket = function(io, socket) {
     console.log(`Recipient ${data.to} socket ID: ${recipientSocketId || 'not found'}`);
     
     if (recipientSocketId) {
-      // Option 1: Send directly to socket
+      // Send directly to socket
       io.to(recipientSocketId).emit(EVENTS.OFFER, data);
       console.log(`Sent OFFER directly to socket ${recipientSocketId}`);
       
-      // Option 2: Also broadcast to the chat room
+      // Also broadcast to the chat room
       if (data.chatId) {
+        const roomSockets = await io.in(data.chatId).fetchSockets();
+        console.log(`Chat room ${data.chatId} has ${roomSockets.length} connected sockets`);
         io.to(data.chatId).emit(EVENTS.OFFER, data);
         console.log(`Also broadcast OFFER to chat room ${data.chatId}`);
       }
@@ -53,8 +61,11 @@ exports.handleCallSocket = function(io, socket) {
 
   socket.on(EVENTS.ANSWER, (data) => {
     console.log(`Received ANSWER from ${data.from} to ${data.to} for call ${data.callId}`, {
-      sdp: data.sdp ? data.sdp.type : 'No SDP'
-    });
+      sdpType: data.sdp?.type || 'unknown',
+      sdpHasIce: data.sdp?.sdp?.includes('candidate') || false,
+      sdpHasAudio: data.sdp?.sdp?.includes('m=audio') || false,
+      sdpHasVideo: data.sdp?.sdp?.includes('m=video') || false
+    }); 
     
     const recipientSocketId = userSocketMap.get(data.to);
     if (recipientSocketId) {
