@@ -226,20 +226,6 @@ export const userService = {
             throw err;
         }
     },
-    initiateCall: async (initiatorId, recipientId, chatId, callType) => {
-        try {
-            const response = await api.post('/call/initiate', {
-              chatId,
-              initiatorId,
-              participantIds: [recipientId],
-              callType,
-            });
-            return response.data; // Return the API response
-          } catch (error) {
-            console.error('Error initiating call:', error.response?.data || error.message);
-            throw error; // Rethrow for handling in the caller function
-          }
-    }
 }
 
 export const friendService = {
