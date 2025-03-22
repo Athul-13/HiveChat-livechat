@@ -10,10 +10,11 @@ exports.handleCallSocket = function(io, socket) {
   socket.on('callUser', async (data) => {
     try {
       const { recipientId, chatId, callType, token, channel, callId } = data;
+      console.log('data',data);
       console.log(`Call initiated to user ${recipientId} with call ID ${callId}`);
       
       // Get sender info (the caller)
-      const callerId = socket.user.id || Object.keys(userSocketMap).find(id => userSocketMap.get(id) === socket._id);
+      const callerId = socket.userId || Object.keys(userSocketMap).find(id => userSocketMap.get(id) === socket._id);
       
       if (!callerId) {
         console.error('Cannot identify caller');
@@ -191,6 +192,7 @@ exports.handleCallSocket = function(io, socket) {
   
   // Add user ID to socket for easier identification
   socket.on('userConnected', (userId) => {
+    console.log(`User ${userId} connected with socket call ${socket.id}`);
     socket.userId = userId;
   });
 };
