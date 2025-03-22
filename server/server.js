@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const callRoutes = require('./routes/callRoutes');
 const { initSocket } = require('./socket/socket');
 require('dotenv').config();
 
@@ -32,6 +33,7 @@ app.use(
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/notification', notificationRoutes);
+app.use('/api/agora', callRoutes)
 
 app.use((req, res) => {
     res.status(404);

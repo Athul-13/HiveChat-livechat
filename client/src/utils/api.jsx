@@ -296,3 +296,19 @@ export const notificationService = {
         }
     }
 }
+
+export const callService = {
+    initiateCall: async (recipientId, chatId, callType) => {
+        const response = await api.post('/agora/initiate', {recipientId, chatId, callType});
+        return response.data;
+    },
+    join: async (callId) => {
+        const response = await api.put(`/agora/${callId}/join`);
+        return response.data;
+    },
+    endCall: async (callId) => {
+        const response = await api.put(`/agora/${callId}/end`);
+        console.log('res'.response.data);
+        return response.data;
+    }
+}

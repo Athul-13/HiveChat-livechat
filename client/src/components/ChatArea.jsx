@@ -1,29 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, ArrowLeft, Users, Image, Smile, Phone, Video } from "lucide-react";
-import { io } from "socket.io-client";
 import { userService } from "../utils/api";
 import Profile from '../assets/proffile.jpg';
 import ChatInfoModal from './ChatInfoModal';
-import { useSelector } from "react-redux";
+import socket from "../utils/socket"; // Import the global socket instance
 
 export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onlineUsers, initiateCall }) {
   const [message, setMessage] = useState("");
-  const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [localChat, setLocalChat] = useState(chat);
   const [showChatInfo, setShowChatInfo] = useState(false);
-
-  // Initialize socket connection
-  useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_BACKEND_URL); // Use your server URL
-    setSocket(newSocket);
-
-    // Clean up on component unmount
-    return () => {
-      newSocket.disconnect();
-    };
-  }, []);
 
   // Update localChat when chat prop changes
   useEffect(() => {
@@ -50,27 +37,21 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
 
   // Socket event listeners
   useEffect(() => {
-    if (!socket) return;
-
-    // Connect and authenticate
-    socket.on("connect", () => {
-      console.log("Connected to socket server");
-      // Identify the user
-      socket.emit("userConnected", currentUser.id);
-      
-      // Join the chat room if it exists
-      if (localChat?._id) {
-        socket.emit("joinRoom", localChat._id);
-      }
-    });
+    // Join the chat room if it exists
+    if (localChat?._id) {
+      socket.emit("joinRoom", localChat._id);
+    }
 
     // Listen for new messages
-    socket.on("newMessage", (newMessage) => {
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-    });
+    const handleNewMessage = (newMessage) => {
+      // Only add messages for the current chat
+      if (newMessage.chat === localChat?._id) {
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+      }
+    };
 
     // Listen for chat creation event
-    socket.on("chatCreated", (newChat) => {
+    const handleChatCreated = (newChat) => {
       console.log("New chat created:", newChat);
       setLocalChat(newChat);
       // Update parent component if needed
@@ -79,20 +60,22 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
       }
       // Join the newly created room
       socket.emit("joinRoom", newChat._id);
-    });
+    };
+
+    socket.on("newMessage", handleNewMessage);
+    socket.on("chatCreated", handleChatCreated);
 
     return () => {
       // Leave the chat room when component unmounts
-      if (socket && localChat?._id) {
+      if (localChat?._id) {
         socket.emit("leaveRoom", localChat._id);
       }
       
       // Cleanup event listeners
-      socket.off("connect");
-      socket.off("newMessage");
-      socket.off("chatCreated");
+      socket.off("newMessage", handleNewMessage);
+      socket.off("chatCreated", handleChatCreated);
     };
-  }, [socket, localChat, currentUser.id, onChatCreated]);
+  }, [localChat, onChatCreated]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -104,7 +87,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!message.trim() || !socket) return;
+    if (!message.trim()) return;
     
     try {
       // If no chat exists yet, create one first
@@ -217,7 +200,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
         </div>
 
         {/* Call Buttons (Only shown when user is online)&& chatInfo.status === "online" */}
-        {(!localChat.participants || localChat.participants?.length <= 2)  && (
+        {(!localChat.participants || localChat.participants?.length <= 2) && (
           <div className="flex space-x-2 gap-6 me-5">
             <button 
               onClick={() => initiateCall(chatInfo._id, localChat._id, 'voice')}
@@ -236,7 +219,6 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
           </div>
         )}
       </div>
-
 
       {/* Chat Messages */}
       <div 

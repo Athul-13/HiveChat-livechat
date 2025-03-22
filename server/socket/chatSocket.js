@@ -139,7 +139,6 @@ exports.handleSocket = function(io, socket) {
   // Handle new messages
   socket.on('sendMessage', async (messageData) => {
     try {
-      console.log('Received message:', messageData);
       
       // Create and save message to database
       const newMessage = new Message({
@@ -160,7 +159,7 @@ exports.handleSocket = function(io, socket) {
         .populate('sender', 'firstName lastName profilePicture');
       
       // Broadcast to everyone in the chat room
-      io.to(messageData.chat).emit(EVENTS.NEW_MESSAGE, populatedMessage);
+      io.to(messageData.chat).emit("newMessage", populatedMessage);
       
       // Send notification to other participants who aren't in the room
       const chat = await Chat.findById(messageData.chat).populate('participants');
@@ -174,7 +173,6 @@ exports.handleSocket = function(io, socket) {
         const recipientsToNotify = chat.participants.filter(
           participant => participant._id.toString() !== messageData.sender.toString()
         );
-        console.log('📢 Users to be notified:', recipientsToNotify.map(r => r._id.toString()));
         
         // Import notification controller here to avoid circular dependency
         const notificationController = require('../controllers/notificationController');

@@ -392,7 +392,7 @@ export default function Homepage() {
     </div>
     <CallManager 
     currentUser={currentUser} 
-    ref={callManagerRef}
+    callManagerRef={callManagerRef}
   />
   </>
   );

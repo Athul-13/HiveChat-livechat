@@ -18,7 +18,7 @@ const callSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['initiated', 'ongoing', 'ended', 'missed'],
+    enum: ['initiated', 'ringing', 'ongoing', 'ended', 'missed'],
     default: 'initiated'
   },
   startTime: {
@@ -31,6 +31,11 @@ const callSchema = new mongoose.Schema({
     type: String,
     enum: ['voice', 'video'],
     required: true
+  },
+  channel: {
+      type: String, 
+      required: true,
+      unique: true,
   }
 }, { timestamps: true });
 
