@@ -5,7 +5,7 @@ export const setAuthCookie = (name, value, options = {}) => {
     Cookies.set(name, value, { 
         expires: 7,
         secure: true,
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
         ...options,
     });
