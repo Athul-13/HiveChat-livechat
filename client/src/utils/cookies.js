@@ -4,7 +4,7 @@ import Cookies from 'js-cookie';
 export const setAuthCookie = (name, value, options = {}) => {
     Cookies.set(name, value, { 
         expires: 7,
-        secure: import.meta.env.MODE === 'production',
+        secure: true,
         sameSite: 'strict',
         path: '/',
         ...options,
