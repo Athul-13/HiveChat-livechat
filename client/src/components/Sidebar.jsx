@@ -17,7 +17,7 @@ export default function Sidebar({
   ];
 
   return (
-    <nav className="w-20 md:w-24 bg-gradient-to-b from-indigo-600 via-purple-500 to-indigo-700 flex flex-col items-center py-6 rounded-l-xl shadow-xl">
+    <nav className="hidden md:flex w-20 md:w-24 bg-gradient-to-b from-indigo-600 via-purple-500 to-indigo-700 flex flex-col items-center py-6 rounded-l-xl shadow-xl">
       {/* App logo at top */}
       <div className="mb-8">
         <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md">

@@ -18,6 +18,7 @@ import ProfileArea from "../components/ProfileArea";
 import ChatArea from "../components/ChatArea";
 import Sidebar from "../components/Sidebar";
 import CallManager from "../components/CallManager";
+import { MobileBottomNavigation, MobileTopBar } from "../components/MobileNav";
 
 export default function Homepage() {
   const [loading, setLoading] = useState(true);
@@ -28,12 +29,27 @@ export default function Homepage() {
   const [chats, setChats] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [isMobile, setIsMobile] = useState(false)
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const callManagerRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const currentUser = useSelector((state) => state.auth.user);
+
+  // Check if we're on mobile
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkIfMobile()
+    window.addEventListener("resize", checkIfMobile)
+
+    return () => {
+      window.removeEventListener("resize", checkIfMobile)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -281,6 +297,14 @@ export default function Homepage() {
     // Update profile logic
   };
 
+  const handleProfileClick = () => {
+    setActiveSection("profile");
+  };
+
+  const handleSearchClick = () => {
+    setActiveSection("search");
+  };
+
   const initiateCall = (recipientId, chatId, callType) => {
     if (callManagerRef.current) {
       callManagerRef.current.initiateCall(recipientId, chatId, callType);
@@ -327,7 +351,14 @@ export default function Homepage() {
 
   return (
     <>
-    <div className="flex h-screen bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden scrollbar-thin">
+    <MobileTopBar 
+        className="fixed top-0 left-0 right-0 z-10"
+        currentUser={currentUser}
+        onProfileClick={handleProfileClick}
+        onSearchClick={handleSearchClick}
+      />
+
+    <div className={` flex h-screen bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden scrollbar-thin ${isMobile ? 'mt-16 mb-16' : ''}`}>
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden -z-10">
         <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-gradient-to-r from-indigo-300 to-purple-300 rounded-full blur-3xl opacity-20 animate-pulse"></div>
@@ -335,30 +366,32 @@ export default function Homepage() {
       </div>
 
       {/* App Container */}
-      <div className="flex w-full p-4 md:p-6 overflow-hidden scrollbar-thin">
+      <div className="flex w-full p-0 md:p-6 sm:p-0  overflow-hidden scrollbar-thin">
         {/* Sidebar */}
-        <Sidebar
-          activeSection={activeSection}
-          onSectionChange={handleSectionChange}
-          currentUser={currentUser}
-          notificationCount={unreadNotificationCount}
-          friendRequestCount={friendRequests.length}
-        />
+          <Sidebar
+            activeSection={activeSection}
+            onSectionChange={handleSectionChange}
+            currentUser={currentUser}
+            notificationCount={unreadNotificationCount}
+            friendRequestCount={friendRequests.length}
+          />
 
         {/* Main Content */}
         <div className="flex flex-1 bg-white rounded-r-xl shadow-xl overflow-hidden scrollbar-thin">
           {/* Left Panel */}
-          <div className="flex-[1.5] border-r border-gray-100 overflow-hidden flex flex-col scrollbar-thin">
-            <div className="p-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
-              <h2 className="text-xl font-semibold">{getSectionTitle()}</h2>
-            </div>
+          <div className="flex-1 md:flex-[1.5]  border-r border-gray-100 overflow-hidden flex flex-col scrollbar-thin">
+            {!isMobile && (
+              <div className="p-6 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <h2 className="text-xl font-semibold">{getSectionTitle()}</h2>
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto bg-white">
               {renderSideContent()}
             </div>
           </div>
 
           {/* Chat Area */}
-          <div className="flex-[3] overflow-hidden flex flex-col">
+          <div className="hidden md:flex md:flex-[3] overflow-hidden flex-col">
             {activeChat ? (
               <ChatArea chat={activeChat} currentUser={currentUser} onBack={() => setActiveChat(null)} onlineUsers={onlineUsers} initiateCall={initiateCall}/>
             ) : (
@@ -390,6 +423,30 @@ export default function Homepage() {
         </div>
       </div>
     </div>
+    {isMobile && activeChat ? (
+  <div className="fixed inset-0 z-50 bg-white flex flex-col h-full w-full">
+    <ChatArea 
+      chat={activeChat} 
+      currentUser={currentUser} 
+      onBack={() => {
+        setActiveChat(null);
+        setActiveSection("chats");  // Ensure we go back to chats section
+      }} 
+      onlineUsers={onlineUsers} 
+      initiateCall={initiateCall}
+      className="flex-1 overflow-hidden" // Ensure full height and prevent scrolling
+    />
+  </div>
+) : (
+  <MobileBottomNavigation
+    isMobile={isMobile}
+    activeSection={activeSection}
+    onSectionChange={setActiveSection}
+    notificationCount={unreadNotificationCount}
+    friendRequestCount={friendRequests.length}
+  />
+)}
+
     <CallManager 
     currentUser={currentUser} 
     callManagerRef={callManagerRef}

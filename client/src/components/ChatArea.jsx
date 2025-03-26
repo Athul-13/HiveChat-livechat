@@ -161,13 +161,13 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
   const chatInfo = getChatInfo();
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-3rem)]">
+    <div className="flex flex-col h-full max-h-screen md:max-h-[calc(100vh-3rem)]">
       {/* Chat Header */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 flex items-center shadow-md">
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-3 md:p-4 flex items-center shadow-md">
         {/* Back Button */}
         <button 
           onClick={onBack} 
-          className="mr-4 hover:bg-white/20 p-2 rounded-full transition-colors"
+          className="mr-2 md:mr-4 hover:bg-white/20 p-2 rounded-full transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
@@ -175,8 +175,8 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
         {/* Chat Info (This takes up all the space in between) */}
         <div className="flex items-center flex-grow">
           {(localChat.participants?.length > 2) ? (
-            <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mr-3">
-              <Users className="w-6 h-6 text-white" onClick={() => setShowChatInfo(true)} />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mr-2 md:mr-3">
+              <Users className="w-5 h-5 md:w-6 md:h-6 text-white" onClick={() => setShowChatInfo(true)} />
             </div>
           ) : (
             <div className="relative" onClick={() => setShowChatInfo(true)}>
@@ -184,14 +184,14 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
               <img 
                 src={chatInfo.profilePicture || "/placeholder.svg"} 
                 alt={chatInfo.name}
-                className="relative w-12 h-12 rounded-full mr-3 border-2 border-white/50 object-cover" 
+                className="relative w-10 h-10 md:w-12 md:h-12 rounded-full mr-2 md:mr-3 border-2 border-white/50 object-cover" 
               />
             </div>
           )}
           <div>
-            <h2 className="font-bold text-lg">{chatInfo.name}</h2>
+            <h2 className="font-bold text-base md:text-lg">{chatInfo.name}</h2>
             {(!localChat.participants || localChat.participants?.length <= 2) && (
-              <p className="text-sm opacity-90 flex items-center">
+              <p className="text-xs md:text-sm opacity-90 flex items-center">
                 <span className={`inline-block w-2 h-2 rounded-full mr-2 ${chatInfo.status === "online" ? "bg-green-400" : "bg-gray-300"}`}></span>
                 {chatInfo.status === "online" ? "Online" : "Offline"}
               </p>
@@ -201,17 +201,17 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
 
         {/* Call Buttons (Only shown when user is online)&& chatInfo.status === "online" */}
         {(!localChat.participants || localChat.participants?.length <= 2) && (
-          <div className="flex space-x-2 gap-6 me-5">
+          <div className="flex space-x-2 gap-3 md:gap-6 mr-2 md:mr-5">
             <button 
               onClick={() => initiateCall(chatInfo._id, localChat._id, 'voice')}
-              className="hover:bg-white/20 p-2 rounded-full transition-colors"
+              className="hover:bg-white/20 p-1.5 md:p-2 rounded-full transition-colors"
               title="Voice Call"
             >
               <Phone size={20} />
             </button>
             <button 
               onClick={() => initiateCall(chatInfo._id, localChat._id, 'video')}
-              className="hover:bg-white/20 p-2 rounded-full transition-colors"
+              className="hover:bg-white/20 p-1.5 md:p-2 rounded-full transition-colors"
               title="Video Call"
             >
               <Video size={20} />
@@ -222,7 +222,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
 
       {/* Chat Messages */}
       <div 
-        className="flex-1 overflow-y-auto p-6 space-y-4"
+        className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4"
         style={{
           backgroundImage: "radial-gradient(circle at center, rgba(224, 231, 255, 0.2) 0%, rgba(249, 250, 251, 0) 80%)",
           backgroundSize: "100% 100%",
@@ -232,7 +232,7 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
       >
         {messages.length === 0 && (
           <div className="flex justify-center items-center h-full">
-            <p className="text-gray-400 text-center">
+            <p className="text-gray-400 text-sm md:text-base text-center">
               {localChat._id 
                 ? "No messages yet. Start the conversation!" 
                 : "Send a message to start the conversation!"}
@@ -248,11 +248,11 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
                 <img 
                   src={msg.sender.profilePicture || Profile} 
                   alt={`${msg.sender.firstName} ${msg.sender.lastName}`} 
-                  className="w-8 h-8 rounded-full mr-2 self-end mb-1" 
+                  className="w-7 h-7 md:w-8 md:h-8 rounded-full mr-2 self-end mb-1" 
                 />
               )}
               <div
-                className={`max-w-[70%] rounded-2xl p-4 shadow-sm ${
+                className={`max-w-[70%] rounded-2xl p-3 md:p-4 shadow-sm ${
                   isCurrentUser 
                     ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white" 
                     : "bg-white border border-gray-100 text-gray-800"
@@ -261,8 +261,8 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
                 {localChat.participants?.length > 2 && !isCurrentUser && (
                   <p className="text-xs font-medium mb-1 text-indigo-600">{`${msg.sender.firstName} ${msg.sender.lastName}`}</p>
                 )}
-                <p className="text-sm">{msg.content}</p>
-                <p className={`text-xs mt-1 text-right ${isCurrentUser ? "text-white/70" : "text-gray-400"}`}>
+                <p className="text-xs md:text-sm">{msg.content}</p>
+                <p className={`text-[10px] md:text-xs mt-1 text-right ${isCurrentUser ? "text-white/70" : "text-gray-400"}`}>
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
@@ -273,9 +273,12 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
       </div>
 
       {/* Message Input */}
-      <div className="p-4 bg-white border-t border-gray-100">
-        <form onSubmit={handleSendMessage} className="flex items-center bg-gray-50 rounded-full p-1 shadow-sm border border-gray-100">
-          <div className="flex space-x-1 px-2">
+      <div className="p-3 md:p-4 bg-white border-t border-gray-100 w-full">
+        <form 
+          onSubmit={handleSendMessage} 
+          className="flex items-center bg-gray-50 rounded-full p-1 shadow-sm border border-gray-100 w-full"
+        >
+          <div className="flex space-x-1 px-1 md:px-2">
             <button type="button" className="p-2 text-gray-400 hover:text-indigo-600 rounded-full hover:bg-gray-100 transition-colors">
               <Paperclip size={18} />
             </button>
@@ -286,13 +289,15 @@ export default function ChatArea({ chat, currentUser, onBack, onChatCreated, onl
               <Smile size={18} />
             </button>
           </div>
+          
           <input
             type="text"
             placeholder="Type a message..."
-            className="flex-1 px-4 py-2 bg-transparent rounded-full focus:outline-none"
+            className="flex-1 px-4 py-2 bg-transparent rounded-full focus:outline-none min-w-0"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
+          
           <button
             type="submit"
             className={`ml-2 p-3 rounded-full transition-all ${
